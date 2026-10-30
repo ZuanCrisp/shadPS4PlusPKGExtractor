@@ -1,0 +1,72 @@
+
+name: Mirror shadPS4Plus v1.1 Assets
+
+on:
+  push:
+    branches:
+      - ShadPs4Plus
+    paths:
+      - ".github/workflows/mirror-v11-assets.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mirror-assets:
+    name: Download and Verify Official Assets
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Download official binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p dist
+          BASE_URL="https://github.com/AzaharPlus/shadPS4Plus/releases/download/PKG_EXTRACTOR_1_1"
+
+          curl --fail --show-error --location --retry 3 \
+            "$BASE_URL/ShadPs4Plus-PkgExtractor-1.1-windows.zip" \
+            -o "dist/ShadPs4Plus-PkgExtractor-1.1-windows.zip"
+
+          curl --fail --show-error --location --retry 3 \
+            "$BASE_URL/ShadPs4Plus-PkgExtractor-1.1-linux.zip" \
+            -o "dist/ShadPs4Plus-PkgExtractor-1.1-linux.zip"
+
+          curl --fail --show-error --location --retry 3 \
+            "$BASE_URL/ShadPs4Plus-PkgExtractor-1.1-linux.AppImage" \
+            -o "dist/ShadPs4Plus-PkgExtractor-1.1-linux.AppImage"
+
+      - name: Verify official SHA256
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cd dist
+
+          echo "a6a6dee84c1283949245c868e580ff8d0049d0e73df9de3096460ee26c6f04d7  ShadPs4Plus-PkgExtractor-1.1-windows.zip" | sha256sum --check
+
+          echo "6dc4f867ced673c940c5c7538024a455bb00a3d3ab0f758db6b96184567bb677  ShadPs4Plus-PkgExtractor-1.1-linux.zip" | sha256sum --check
+
+          echo "b360bc691aa3d89071aa707224155f6eade348d314cf7798ac550e31c11a7bcc  ShadPs4Plus-PkgExtractor-1.1-linux.AppImage" | sha256sum --check
+
+          sha256sum * > SHA256SUMS.txt
+
+      - name: Upload assets to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view v1.1 --repo "$GITHUB_REPOSITORY"
+
+          gh release upload v1.1 dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber
+
+      - name: Verify release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view v1.1 \
+            --repo "$GITHUB_REPOSITORY"
